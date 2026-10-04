@@ -1,0 +1,18 @@
+[project]
+name = "bit-mutant-examples"
+version = "0.1.0"
+description = "Example functions and tests for bit-mutant"
+requires-python = ">=3.10"
+dependencies = [
+    "bit-mutant",
+]
+
+[tool.uv.sources]
+bit-mutant = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "jhb123", email = "jhbriggs23@gmail.com" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.10"
 dependencies = [
     "pytest>=9.1.1",
 ]
@@ -23,5 +23,16 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "bit-mutant-examples",
     "ruff>=0.16.10",
 ]
+
+[tool.uv.workspace]
+members = ["examples"]
+
+[tool.uv.sources]
+bit-mutant-examples = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+pytester_example_dir = "examples/tests"

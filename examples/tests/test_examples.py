@@ -9,8 +9,7 @@ cases work together: each one can catch different mutants.
 """
 
 import pytest
-
-from .examples import Flags, bistshift_divide, is_even, set_bit
+from bit_mutant_examples import Flags, bistshift_divide, is_even, set_bit
 
 
 @pytest.mark.mutate(target=bistshift_divide)

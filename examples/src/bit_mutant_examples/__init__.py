@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 def bistshift_divide(x: int) -> int:
     return x >> 1
 

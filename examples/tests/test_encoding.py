@@ -1,6 +1,5 @@
 import pytest
-
-from .examples.encoding import (
+from bit_mutant_examples.encoding import (
     align_down,
     decode_varint,
     encode_varint,
