@@ -1,6 +1,6 @@
 import pytest
 
-from examples.encoding import (
+from .examples.encoding import (
     align_down,
     decode_varint,
     encode_varint,
