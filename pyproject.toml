@@ -1,5 +1,5 @@
 [project]
-name = "bit-mutant"
+name = "pytest-bit-mutant"
 dynamic = ["version"]
 description = "A pytest plugin that mutation-tests bitwise operators by rewriting function bytecode"
 readme = "README.md"
@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 [project.entry-points."pytest11"]
-bit_mutant = "bit_mutant"
+bit_mutant = "pytest_bit_mutant"
 
 [build-system]
 requires = ["hatchling>=1.27", "hatch-vcs>=0.5"]
@@ -45,7 +45,7 @@ raw-options = { fallback_version = "0.0.0" }
 
 # Ship only the plugin; the examples, tests and tooling stay in the repo.
 [tool.hatch.build.targets.sdist]
-only-include = ["src/bit_mutant", "README.md", "LICENSE"]
+only-include = ["src/pytest_bit_mutant", "README.md", "LICENSE"]
 
 [dependency-groups]
 dev = [

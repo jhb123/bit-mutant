@@ -1,6 +1,6 @@
 name: publish
 
-# Pushing a tag like v1.2.3 tests, builds and publishes bit-mutant 1.2.3 to PyPI.
+# Pushing a tag like v1.2.3 tests, builds and publishes pytest-bit-mutant 1.2.3 to PyPI.
 on:
   push:
     tags: ["v*"]
@@ -20,7 +20,7 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
       - run: uv build
       - name: Check the version matches the tag
-        run: ls dist/bit_mutant-${GITHUB_REF_NAME#v}.tar.gz
+        run: ls dist/pytest_bit_mutant-${GITHUB_REF_NAME#v}.tar.gz
       - uses: actions/upload-artifact@v7
         with:
           name: dist
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/bit-mutant/
+      url: https://pypi.org/project/pytest-bit-mutant/
     permissions:
       id-token: write
     steps:

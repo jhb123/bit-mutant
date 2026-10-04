@@ -1,14 +1,14 @@
 [project]
 name = "bit-mutant-examples"
 version = "0.1.0"
-description = "Example functions and tests for bit-mutant"
+description = "Example functions and tests for pytest-bit-mutant"
 requires-python = ">=3.10"
 dependencies = [
-    "bit-mutant",
+    "pytest-bit-mutant",
 ]
 
 [tool.uv.sources]
-bit-mutant = { workspace = true }
+pytest-bit-mutant = { workspace = true }
 
 [build-system]
 requires = ["uv_build>=0.9.5,<0.10.0"]

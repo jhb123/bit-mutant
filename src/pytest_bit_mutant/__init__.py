@@ -116,6 +116,9 @@ class MutantResult:
     target: str  # qualname of the mutated function
     weak_reason: str | None  # set if the test is marked xfail (known weak)
     caught: bool = False  # did any case catch it?
+    # Did any case run? Mutants that were deselected (-k), never reached (-x)
+    # or only collected (--collect-only) say nothing about the tests.
+    ran: bool = False
 
 
 def make_mutants(func):
@@ -316,9 +319,12 @@ def pytest_runtest_call(item):
 def pytest_runtest_makereport(item, call):
     report = yield
     group = item.stash.get(group_key, None)
-    if group is not None and call.when == "call" and call.excinfo is not None:
-        # The test raised with the mutant in place: this case caught it.
-        item.config.stash[results_key][group].caught = True
+    if group is not None and call.when == "call":
+        result = item.config.stash[results_key][group]
+        result.ran = True
+        if call.excinfo is not None:
+            # The test raised with the mutant in place: this case caught it.
+            result.caught = True
     return report
 
 
@@ -356,7 +362,7 @@ def survivors(results: dict, *, weak: bool) -> list:
     return [
         group
         for group, result in results.items()
-        if not result.caught and (result.weak_reason is not None) == weak
+        if result.ran and not result.caught and (result.weak_reason is not None) == weak
     ]
 
 
@@ -376,7 +382,11 @@ def pytest_sessionfinish(session, exitstatus):
 # the mutants that survived it.
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     """Print each mutated test's score, and any surviving mutants."""
-    results = config.stash[results_key]
+    results = {
+        group: result
+        for group, result in config.stash[results_key].items()
+        if result.ran
+    }
     if not results:
         return
     tr = terminalreporter
