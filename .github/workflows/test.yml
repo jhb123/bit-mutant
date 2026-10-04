@@ -7,28 +7,36 @@ on:
 
 jobs:
   test:
+    name: python ${{ matrix.python-version }}, pytest ${{ matrix.pytest-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        # The lowest supported (pyproject.toml: pytest>=8.0), the last 8.x,
+        # the first 9.x, and whatever uv.lock has.
+        pytest-version: ["8.0", "8.4", "9.0", "locked"]
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --locked
+      - name: Install pytest ${{ matrix.pytest-version }}
+        if: matrix.pytest-version != 'locked'
+        run: uv pip install "pytest==${{ matrix.pytest-version }}.*"
+      # --no-sync, so uv run doesn't put the locked pytest back.
       - name: Plugin tests
-        run: uv run pytest -v
+        run: uv run --no-sync pytest -v
       - name: Example tests
-        run: uv run pytest -v examples
+        run: uv run --no-sync pytest -v examples
 
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0
       - run: uv sync --locked
       - run: uv run ruff check
       - run: uv run ruff format --check

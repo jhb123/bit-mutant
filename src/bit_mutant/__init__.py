@@ -27,6 +27,35 @@ def _probe(a, b, c, d, e, f):
     _ = ~a
 
 
+# Python 3.11 merged the binary operators into one BINARY_OP instruction whose
+# argument says which operator it is. Before that (3.10), every operator had
+# its own instruction, named here.
+HAS_BINARY_OP = "BINARY_OP" in dis.opmap
+LEGACY_OPNAMES = {
+    "BINARY_AND": "&",
+    "BINARY_OR": "|",
+    "BINARY_XOR": "^",
+    "BINARY_LSHIFT": "<<",
+    "BINARY_RSHIFT": ">>",
+    "INPLACE_AND": "&=",
+    "INPLACE_OR": "|=",
+    "INPLACE_XOR": "^=",
+    "INPLACE_LSHIFT": "<<=",
+    "INPLACE_RSHIFT": ">>=",
+}
+
+# Which byte of an instruction says which operator it is: the argument with
+# BINARY_OP, the opcode itself before it. Swapping that byte swaps the operator.
+OPERATOR_BYTE = 1 if HAS_BINARY_OP else 0
+
+
+def operator_of(instruction: dis.Instruction) -> str | None:
+    """The binary operator symbol an instruction performs, if any."""
+    if instruction.opname == "BINARY_OP":
+        return instruction.argrepr
+    return LEGACY_OPNAMES.get(instruction.opname)
+
+
 def build_instruction_table() -> dict[str, int]:
     """Map each operator symbol to the bytecode value that encodes it.
 
@@ -39,10 +68,10 @@ def build_instruction_table() -> dict[str, int]:
         if instruction.opname == "UNARY_INVERT":
             # ~ is its own instruction with no argument, so record the opcode.
             instruction_lookup["~"] = instruction.opcode
-        elif instruction.opname.startswith("BINARY"):
-            # All binary operators share one BINARY_OP instruction; the
-            # argument (oparg) says which operator it is.
-            instruction_lookup[instruction.argrepr] = instruction.oparg
+        elif (symbol := operator_of(instruction)) is not None:
+            # The value at OPERATOR_BYTE: BINARY_OP's argument, or the opcode.
+            value = instruction.arg if HAS_BINARY_OP else instruction.opcode
+            instruction_lookup[symbol] = value
     return instruction_lookup
 
 
@@ -97,36 +126,45 @@ def make_mutants(func):
     instruction is two bytes, [opcode, argument], starting at its offset.
     """
     code = func.__code__
+    lineno = code.co_firstlineno
     for instruction in dis.get_instructions(func):
+        # Python 3.11+ gives every instruction its position. Before that, only
+        # the first instruction of each line says which line it starts.
+        positions = getattr(instruction, "positions", None)
+        if positions is not None and positions.lineno is not None:
+            lineno = positions.lineno
+        elif positions is None and instruction.starts_line is not None:
+            lineno = instruction.starts_line
+
         if instruction.opcode == INSTRUCTION_TABLE["~"]:
             # Replace the whole instruction (opcode byte) with a NOP. Only safe
             # if no inline cache entries follow it, since a NOP has none.
-            if instruction.cache_info:
+            if getattr(instruction, "cache_info", None):
                 continue
             co_code = bytearray(code.co_code)
             co_code[instruction.offset] = NOP
             co_code[instruction.offset + 1] = 0
-            description = f"{func.__qualname__}:{instruction.positions.lineno} ~x->x"
+            description = f"{func.__qualname__}:{lineno} ~x->x"
             yield code.replace(co_code=bytes(co_code)), "~", "", description
             continue
 
-        if instruction.opname != "BINARY_OP":
+        original = operator_of(instruction)
+        if original is None:
             continue
-        for replacement in MUTATION_TABLE.get(instruction.argrepr, []):
-            # Same opcode, different argument: only the second byte changes.
-            new_arg = INSTRUCTION_TABLE[replacement]
-            assert 0 <= new_arg < 256
+        for replacement in MUTATION_TABLE.get(original, []):
+            # Only the byte that names the operator changes (see OPERATOR_BYTE).
+            new_value = INSTRUCTION_TABLE[replacement]
+            assert 0 <= new_value < 256
             # Code objects are immutable, so edit a copy of the bytes and build
             # a new code object from it.
             co_code = bytearray(code.co_code)
-            co_code[instruction.offset + 1] = new_arg
+            co_code[instruction.offset + OPERATOR_BYTE] = new_value
             description = (
-                f"{func.__qualname__}:{instruction.positions.lineno} "
-                f"{instruction.argrepr} swapped for {replacement}"
+                f"{func.__qualname__}:{lineno} {original} swapped for {replacement}"
             )
             yield (
                 code.replace(co_code=bytes(co_code)),
-                instruction.argrepr,
+                original,
                 replacement,
                 description,
             )
