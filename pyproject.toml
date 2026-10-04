@@ -1,6 +1,6 @@
 [project]
 name = "bit-mutant"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A pytest plugin that mutation-tests bitwise operators by rewriting function bytecode"
 readme = "README.md"
 license = "MIT"
@@ -34,8 +34,18 @@ classifiers = [
 bit_mutant = "bit_mutant"
 
 [build-system]
-requires = ["uv_build>=0.9.5,<0.10.0"]
-build-backend = "uv_build"
+requires = ["hatchling>=1.27", "hatch-vcs>=0.5"]
+build-backend = "hatchling.build"
+
+# The version comes from the latest git tag (v1.2.3 -> 1.2.3). Between tags it
+# is a dev version like 1.2.4.dev3+gabc1234.
+[tool.hatch.version]
+source = "vcs"
+raw-options = { fallback_version = "0.0.0" }
+
+# Ship only the plugin; the examples, tests and tooling stay in the repo.
+[tool.hatch.build.targets.sdist]
+only-include = ["src/bit_mutant", "README.md", "LICENSE"]
 
 [dependency-groups]
 dev = [
