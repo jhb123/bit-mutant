@@ -12,7 +12,7 @@ def test_set_bit(x, n, expected):
 ```
 
 Each operator in `set_bit` is swapped (e.g. `|` → `^`) and the test reruns. A
-mutant is killed if any case fails. If none do, it survived and the run fails.
+mutant is caught if any case fails. If none do, it survived and the run fails.
 
 Use `target=` as a keyword; a lone positional callable breaks the mark.
 

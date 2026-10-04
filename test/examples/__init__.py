@@ -15,7 +15,7 @@ def no_ops():
 
 
 def arithmetic(x: int, y: int) -> int:
-    return (x + y) * (x - y) // 2 % 7 ** 2
+    return (x + y) * (x - y) // 2 % 7**2
 
 
 def boolean_logic(a: bool, b: bool) -> bool:
@@ -68,7 +68,7 @@ class Flags:
         return a | b
 
     @classmethod
-    def from_bits(cls, *bits: int) -> "Flags":  # Flags.from_bits: 2
+    def from_bits(cls, *bits: int) -> Flags:  # Flags.from_bits: 2
         value = 0
         for bit in bits:
             value |= 1 << bit
@@ -131,7 +131,6 @@ async def async_mask(x: int) -> int:  # async_mask: 1
     return x & 0xFFFF
 
 
-
 def chained(a: int, b: int, c: int, d: int) -> int:  # chained: 4
     return a | b & c ^ d << 1
 
@@ -149,7 +148,9 @@ def double_invert(x: int) -> int:  # double_invert: 2
     return ~~x
 
 
-def in_lambda(xs: list[int]) -> list[int]:  # in_lambda: 1 (lambda has its own code object)
+def in_lambda(
+    xs: list[int],
+) -> list[int]:  # in_lambda: 1 (lambda has its own code object)
     return sorted(xs, key=lambda v: v & 0xF)
 
 

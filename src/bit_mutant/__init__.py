@@ -16,25 +16,26 @@ import pytest
 logger = logging.getLogger("bit_mutant")
 
 
+def _probe(a, b, c, d, e, f):
+    """Use every operator once so its bytecode can be read back."""
+    _ = a & b | c ^ d << e >> f
+    a &= b
+    a |= b
+    a ^= b
+    a <<= b
+    a >>= b
+    _ = ~a
+
+
 def build_instruction_table() -> dict[str, int]:
     """Map each operator symbol to the bytecode value that encodes it.
 
     Rather than hardcode numbers (which are a CPython implementation detail and
-    can change between versions), compile a snippet using every operator and
-    read the values back from the running interpreter.
+    can change between versions), disassemble a function using every operator
+    and read the values back from the running interpreter.
     """
-    probe = "\n".join([
-        "a & b | c ^ d << e >> f",
-        "a &= b",
-        "a |= b",
-        "a ^= b",
-        "a <<= b",
-        "a >>= b",
-        "~a",
-    ])
-    src = compile(probe, "<probe>", "exec")
     instruction_lookup = {}
-    for instruction in dis.get_instructions(src):
+    for instruction in dis.get_instructions(_probe):
         if instruction.opname == "UNARY_INVERT":
             # ~ is its own instruction with no argument, so record the opcode.
             instruction_lookup["~"] = instruction.opcode
@@ -83,9 +84,9 @@ results_key = pytest.StashKey[dict]()
 
 @dataclass
 class MutantResult:
-    target: str             # qualname of the mutated function
+    target: str  # qualname of the mutated function
     weak_reason: str | None  # set if the test is marked xfail (known weak)
-    killed: bool = False     # did any case catch it?
+    caught: bool = False  # did any case catch it?
 
 
 def make_mutants(func):
@@ -159,18 +160,6 @@ def pytest_configure(config):
         "mutate(target, skip=None): mutation-test target; skip is a dict like "
         "MUTATION_TABLE of mutations to leave out (e.g. equivalent mutants)",
     )
-    # The final "N passed, M killed, ..." line colours each count using a
-    # lookup table in pytest's terminal module, and anything not in it is
-    # yellow. There's no public API for this, so add our categories to that
-    # private table (pytest's own subtests plugin registers its categories in
-    # it the same way). If a future pytest removes it, the counts just go back
-    # to yellow.
-    from _pytest import terminal
-
-    colours = getattr(terminal, "_color_for_type", None)
-    if isinstance(colours, dict):
-        colours.setdefault(CAUGHT, "green")
-        colours.setdefault(MISSED, "yellow")
     # Somewhere to collect mutant results as the clones run.
     config.stash[results_key] = {}
 
@@ -291,7 +280,7 @@ def pytest_runtest_makereport(item, call):
     group = item.stash.get(group_key, None)
     if group is not None and call.when == "call" and call.excinfo is not None:
         # The test raised with the mutant in place: this case caught it.
-        item.config.stash[results_key][group].killed = True
+        item.config.stash[results_key][group].caught = True
     return report
 
 
@@ -327,8 +316,9 @@ def pytest_report_teststatus(report, config):
 def survivors(results: dict, *, weak: bool) -> list:
     """Mutants no case caught, in known-weak tests (weak=True) or not."""
     return [
-        group for group, result in results.items()
-        if not result.killed and (result.weak_reason is not None) == weak
+        group
+        for group, result in results.items()
+        if not result.caught and (result.weak_reason is not None) == weak
     ]
 
 
@@ -360,12 +350,12 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
 
     width = max(len(test_id) for test_id in by_test)
     for test_id, mutants in by_test.items():
-        killed = sum(r.killed for r in mutants.values())
+        caught = sum(r.caught for r in mutants.values())
         weak_reason = next(iter(mutants.values())).weak_reason
-        line = f"{test_id:<{width}}  {killed}/{len(mutants)} killed"
+        line = f"{test_id:<{width}}  {caught}/{len(mutants)} caught"
         if weak_reason is None:
-            tr.write_line(line, green=killed == len(mutants), red=killed < len(mutants))
-        elif killed < len(mutants):
+            tr.write_line(line, green=caught == len(mutants), red=caught < len(mutants))
+        elif caught < len(mutants):
             tr.write_line(f"{line}  (known weak: {weak_reason})", yellow=True)
         else:
             tr.write_line(
@@ -373,12 +363,12 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                 yellow=True,
             )
         for description, result in mutants.items():
-            if not result.killed:
+            if not result.caught:
                 tr.write_line(f"    survived: {description}")
 
     total = len(results)
-    killed = sum(r.killed for r in results.values())
-    tr.write_line(f"\n{killed}/{total} mutants killed")
+    caught = sum(r.caught for r in results.values())
+    tr.write_line(f"\n{caught}/{total} mutants caught")
     if survivors(results, weak=False):
         tr.write_line(
             "Surviving mutants: the tests passed with the operator changed. Add a\n"
