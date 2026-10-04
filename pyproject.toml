@@ -30,6 +30,11 @@ classifiers = [
     "Topic :: Software Development :: Testing",
 ]
 
+[project.urls]
+Homepage = "https://github.com/jhb123/bit-mutant"
+Repository = "https://github.com/jhb123/bit-mutant"
+Issues = "https://github.com/jhb123/bit-mutant/issues"
+
 [project.entry-points."pytest11"]
 bit_mutant = "pytest_bit_mutant"
 
